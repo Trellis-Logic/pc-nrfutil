@@ -45,6 +45,13 @@ class Signing(object):
 
         sk_hex = "".join(c.encode('hex') for c in self.sk.to_string())
 
+    def get_hash(self, init_packet_data):
+        m=hashlib.sha256()
+        m.update(init_packet_data)
+        hash_str=m.digest()
+        hash_hex="Init packet (length {0}) sha256 hash:\n{1}".format(len(init_packet_data),hash_str.encode('hex_codec'))
+        return hash_hex
+
     def sign(self, init_packet_data):
         """
         Create signature for init package using P-256 curve and SHA-256 as hashing algorithm
@@ -55,7 +62,8 @@ class Signing(object):
             raise IllegalStateException("Can't save key. No key created/loaded")
 
         # Sign the init-packet
-        signature = self.sk.sign(init_packet_data, hashfunc=hashlib.sha256, sigencode=sigencode_string)
+        signature = self.sk.sign_deterministic(init_packet_data, hashfunc=hashlib.sha256, sigencode=sigencode_string)
+        print(signature.encode('hex_codec'))       
         return signature[31::-1] + signature[63:31:-1]
 
     def verify(self, init_packet, signature):
@@ -88,7 +96,13 @@ class Signing(object):
         elif output_type == 'hex':
             return self.get_vk_hex()
         elif output_type == 'code':
-            return self.get_vk_code()
+            codestr="#if uECC_VLI_NATIVE_LITTLE_ENDIAN\n//Key in little endian format:\n"
+            codestr+=self.get_vk_code()
+            codestr+="\n#else\n//Key in big endian format:\n"
+            codestr+=self.get_vk_code_be()
+            codestr+="\n#endif //uECC_VLI_NATIVE_LITTLE_ENDIAN"
+            codestr+="\nconst struct crypto_key crypto_key_pk = { (uint8_t *)pk, sizeof(pk) };"
+            return codestr
         elif output_type == 'pem':
             return self.get_vk_pem()
         else:
@@ -175,7 +189,7 @@ class Signing(object):
 
     def get_vk_code(self):
         """
-        Get the verification key as code
+        Get the verification key as code (little endian)
         """
         if self.sk is None:
             raise IllegalStateException("Can't get key. No key created/loaded")
@@ -196,7 +210,32 @@ class Signing(object):
 
         vk_code = "static const uint8_t pk[] = {{ {0} }};".format(vk_x_separated+vk_y_separated)
 
-        return vk_code + "\nstatic const nrf_crypto_key_t crypto_key_pk = { .p_le_data = (uint8_t *) pk, .len = sizeof(pk) };"
+        return vk_code
+
+    def get_vk_code_be(self):
+        """
+        Get the verification key as code (big endian)
+        """
+        if self.sk is None:
+            raise IllegalStateException("Can't get key. No key created/loaded")
+
+        vk = self.sk.get_verifying_key()
+        vk_hex = binascii.hexlify(vk.to_string())
+
+        vk_x_separated = ""
+        vk_x_str = vk_hex[0:64]
+        for i in xrange(0, len(vk_x_str), 2):
+            vk_x_separated = vk_x_separated + "0x" + vk_x_str[i:i+2] + ", "
+
+        vk_y_separated = ""
+        vk_y_str = vk_hex[64:128]
+        for i in xrange(0, len(vk_y_str), 2):
+            vk_y_separated = vk_y_separated + "0x" + vk_y_str[i:i+2] + ", "
+        vk_y_separated = vk_y_separated[:-2]
+
+        vk_code = "static const uint8_t pk[] = {{ {0} }};".format(vk_x_separated+vk_y_separated)
+
+        return vk_code
 
     def get_vk_pem(self):
         """
