@@ -63,7 +63,7 @@ class Signing(object):
 
         # Sign the init-packet
         signature = self.sk.sign_deterministic(init_packet_data, hashfunc=hashlib.sha256, sigencode=sigencode_string)
-        print(signature.encode('hex_codec'))       
+        #print(signature.encode('hex_codec'))       
         return signature[31::-1] + signature[63:31:-1]
 
     def verify(self, init_packet, signature):

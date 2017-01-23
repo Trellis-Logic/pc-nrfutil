@@ -236,9 +236,9 @@ class Package(object):
 
             signer = Signing()
             signer.load_key(self.key_file)
-            print(signer.get_hash(init_packet.get_init_command_bytes()))
+            #print(signer.get_hash(init_packet.get_init_command_bytes()))
             signature = signer.sign(init_packet.get_init_command_bytes())
-            print(signature.encode('hex_codec'))
+            #print(signature.encode('hex_codec'))
             init_packet.set_signature(signature, SigningTypes.ECDSA_P256_SHA256)
 
             # Store the .dat file in the work directory
