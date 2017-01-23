@@ -68,13 +68,17 @@ The instructions make use of a predefined [test_key](redbear_duo/test_key) priva
 #### Download the Initial SDU Example bin file to the DUO
 
 In this section, we'll setup your Duo with the initial file it needs to be able to support Bluetooth OTA using the nRF Toolbox application
+
 1. Put your duo in DFU mode
  * Hold down buth buttons
  * Release only the RESET button, while holding down the SETUP button.
  * Wait for the LED to start blinkign yellow
  * Release the SETUP button
+
 2. Using dfu-util, download the .bin file to the device, using command
-```dfu-util -d 2b04:d058 -a 0 -s 0x80C0000 -D redbear_duo/BLE_Blink_Fast.bin```
+```
+dfu-util -d 2b04:d058 -a 0 -s 0x80C0000 -D redbear_duo/BLE_Blink_Fast.bin
+```
 3. Reset the duo.  You should now see the blue LED flashing about 10 times per second.
 
 #### Upload SDU Firmware via the nRF Toolbox
@@ -93,10 +97,19 @@ In this section, we'll sign your own firmware image with the [test_key](redbear_
 
 1. Export your sketch in Arduino using Sketch->Export Compiled Binary
 2. Sign your sketch binary with the test key using
-```nrfutil pkg generate --application <path_to_bin_file> --key-file redbear_duo/test_key myapplication.zip```
+```
+nrfutil pkg generate --application <path_to_bin_file> --key-file redbear_duo/test_key myapplication.zip
+```
 3. Use the instructions above with the nRF Toolbox application to download the firmware image to the Redbear Duo
 
+#### Incorporating the SDU Library Into Your Application
+In this section we'll include the SDU library and a custom key into your arduino application
+TODO: Instructions coming soon
+
 ### Commands
+
+This section is an overview of general commands used with nrfutil.
+
 There are several commands that you can use to perform different tasks related to DFU:
 
 #### pkg
