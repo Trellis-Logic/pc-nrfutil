@@ -1,45 +1,35 @@
-#
-# Copyright (c) 2016 Nordic Semiconductor ASA
+# Copyright (c) 2015, Nordic Semiconductor
 # All rights reserved.
 #
-# Redistribution and use in source and binary forms, with or without modification,
-# are permitted provided that the following conditions are met:
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 #
-#   1. Redistributions of source code must retain the above copyright notice, this
+# * Redistributions of source code must retain the above copyright notice, this
 #   list of conditions and the following disclaimer.
 #
-#   2. Redistributions in binary form must reproduce the above copyright notice, this
-#   list of conditions and the following disclaimer in the documentation and/or
-#   other materials provided with the distribution.
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
 #
-#   3. Neither the name of Nordic Semiconductor ASA nor the names of other
-#   contributors to this software may be used to endorse or promote products
-#   derived from this software without specific prior written permission.
+# * Neither the name of Nordic Semiconductor ASA nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
 #
-#   4. This software must only be used in or with a processor manufactured by Nordic
-#   Semiconductor ASA, or in or with a processor manufactured by a third party that
-#   is used in combination with a processor manufactured by Nordic Semiconductor.
-#
-#   5. Any software provided in binary or object form under this license must not be
-#   reverse engineered, decompiled, modified and/or disassembled.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Python standard library
 import os
 import tempfile
 import shutil
-import binascii
 from enum import Enum
 
 # 3rd party libraries
@@ -48,7 +38,7 @@ import hashlib
 
 
 # Nordic libraries
-from pc_ble_driver_py.exceptions import NordicSemiException
+from nordicsemi.exceptions import NordicSemiException
 from nordicsemi.dfu.nrfhex import *
 from nordicsemi.dfu.init_packet_pb import *
 from nordicsemi.dfu.manifest import ManifestGenerator, Manifest
@@ -66,10 +56,18 @@ HexTypeToInitPacketFwTypemap = {
 
 
 class PacketField(Enum):
-    DEBUG_MODE = 1
-    HW_VERSION = 2
-    FW_VERSION = 3
+    DEVICE_TYPE = 1
+    DEVICE_REVISION = 2
+    APP_VERSION = 3
     REQUIRED_SOFTDEVICES_ARRAY = 4
+    OPT_DATA = 5
+    NORDIC_PROPRIETARY_OPT_DATA_EXT_PACKET_ID = 6
+    NORDIC_PROPRIETARY_OPT_DATA_FIRMWARE_LENGTH = 7
+    NORDIC_PROPRIETARY_OPT_DATA_FIRMWARE_HASH = 8
+    NORDIC_PROPRIETARY_OPT_DATA_FIRMWARE_CRC16 = 9
+    NORDIC_PROPRIETARY_OPT_DATA_INIT_PACKET_ECDS = 10
+
+
 
 class Package(object):
     """
@@ -101,19 +99,17 @@ class Package(object):
 
     """
 
-    DEFAULT_DEBUG_MODE = False
-    DEFAULT_HW_VERSION = 0xFFFFFFFF
+    DEFAULT_DEV_TYPE = 0xFFFF
+    DEFAULT_DEV_REV = 0xFFFF
     DEFAULT_APP_VERSION = 0xFFFFFFFF
-    DEFAULT_BL_VERSION = 0xFFFFFFFF
     DEFAULT_SD_REQ = [0xFFFE]
     DEFAULT_DFU_VER = 0.5
     MANIFEST_FILENAME = "manifest.json"
 
     def __init__(self,
-                 debug_mode=DEFAULT_DEBUG_MODE,
-                 hw_version=DEFAULT_HW_VERSION,
+                 dev_type=DEFAULT_DEV_TYPE,
+                 dev_rev=DEFAULT_DEV_REV,
                  app_version=DEFAULT_APP_VERSION,
-                 bl_version=DEFAULT_BL_VERSION,
                  sd_req=DEFAULT_SD_REQ,
                  app_fw=None,
                  bootloader_fw=None,
@@ -122,10 +118,9 @@ class Package(object):
         """
         Constructor that requires values used for generating a Nordic DFU package.
 
-        :param int debug_mode: Debug init-packet field
-        :param int hw_version: Hardware version init-packet field
+        :param int dev_type: Device type init-packet field
+        :param int dev_rev: Device revision init-packet field
         :param int app_version: App version init-packet field
-        :param int bl_version: Bootloader version init-packet field
         :param list sd_req: Softdevice Requirement init-packet field
         :param str app_fw: Path to application firmware file
         :param str bootloader_fw: Path to bootloader firmware file
@@ -135,11 +130,15 @@ class Package(object):
         """
 
         init_packet_vars = {}
-        if debug_mode is not None:
-            init_packet_vars[PacketField.DEBUG_MODE] = debug_mode
 
-        if hw_version is not None:
-            init_packet_vars[PacketField.HW_VERSION] = hw_version
+        if dev_type is not None:
+            init_packet_vars[PacketField.DEVICE_TYPE] = dev_type
+
+        if dev_rev is not None:
+            init_packet_vars[PacketField.DEVICE_REVISION] = dev_rev
+
+        if app_version is not None:
+            init_packet_vars[PacketField.APP_VERSION] = app_version
 
         if sd_req is not None:
             init_packet_vars[PacketField.REQUIRED_SOFTDEVICES_ARRAY] = sd_req
@@ -147,160 +146,35 @@ class Package(object):
         self.firmwares_data = {}
 
         if app_fw:
-            self.__add_firmware_info(firmware_type=HexType.APPLICATION,
-                                     firmware_version=app_version,
-                                     filename=app_fw,
-                                     init_packet_data=init_packet_vars)
+            self.__add_firmware_info(HexType.APPLICATION,
+                                     app_fw,
+                                     init_packet_vars)
 
         if bootloader_fw:
-            self.__add_firmware_info(firmware_type=HexType.BOOTLOADER,
-                                     firmware_version=bl_version,
-                                     filename=bootloader_fw,
-                                     init_packet_data=init_packet_vars)
+            self.__add_firmware_info(HexType.BOOTLOADER,
+                                     bootloader_fw,
+                                     init_packet_vars)
 
         if softdevice_fw:
-            self.__add_firmware_info(firmware_type=HexType.SOFTDEVICE,
-                                     firmware_version=0xFFFFFFFF,
-                                     filename=softdevice_fw,
-                                     init_packet_data=init_packet_vars)
+            self.__add_firmware_info(HexType.SOFTDEVICE,
+                                     softdevice_fw,
+                                     init_packet_vars)
 
         if key_file:
             self.key_file = key_file
 
-        self.work_dir = None
-        self.manifest = None
-
-    def __del__(self):
-        """
-        Destructor removes the temporary working directory
-        :return:
-        """
-        if self.work_dir is not None:
-            shutil.rmtree(self.work_dir)
-        self.work_dir = None
-
-    def rm_work_dir(self, preserve):
-        # Delete the temporary directory
-        if self.work_dir is not None:
-            if not preserve:
-                shutil.rmtree(self.work_dir)
-
-        self.work_dir = None
-
-    def parse_package(self, filename, preserve_work_dir=False):
-        self.work_dir = self.__create_temp_workspace()
-
-        self.zip_file = filename
-        self.zip_dir  = os.path.join(self.work_dir, 'unpacked_zip')
-        self.manifest = Package.unpack_package(filename, self.zip_dir)
-        
-        self.rm_work_dir(preserve_work_dir)
-
-    def image_str(self, index, hex_type, img):
-        type_strs = {HexType.SD_BL : "sd_bl", 
-                    HexType.SOFTDEVICE : "softdevice",
-                    HexType.BOOTLOADER : "bootloader",
-                    HexType.APPLICATION : "application" }
-
-        # parse init packet
-        with open(os.path.join(self.zip_dir, img.dat_file), "rb") as imgf:
-            initp_bytes = imgf.read()
-
-        initp = InitPacketPB(from_bytes=initp_bytes)
-
-        sd_req = ""
-        for x in initp.init_command.sd_req:
-            sd_req = sd_req + "0x{0:02X}, ".format(x)
-
-        if len(sd_req) != 0:
-            sd_req = sd_req[:-2]
-
-        s = """|
-|- Image #{0}:
-   |- Type: {1}
-   |- Image file: {2}
-   |- Init packet file: {3}
-      |
-      |- op_code: {4}
-      |- signature_type: {5}
-      |- signature: {6}
-      |
-      |- fw_version: 0x{7:08X} ({7})
-      |- hw_version 0x{8:08X} ({8})
-      |- sd_req: {9}
-      |- type: {10}
-      |- sd_size: {11}
-      |- bl_size: {12}
-      |- app_size: {13}
-      |
-      |- hash_type: {14}
-      |- hash: {15}
-      |
-      |- is_debug: {16}
-
-""".format(index,
-        type_strs[hex_type],
-        img.bin_file,
-        img.dat_file,
-        CommandTypes(initp.signed_command.command.op_code).name,
-        SigningTypes(initp.signed_command.signature_type).name,
-        binascii.hexlify(initp.signed_command.signature),
-        initp.init_command.fw_version,
-        initp.init_command.hw_version,
-        sd_req,
-        DFUType(initp.init_command.type).name,
-        initp.init_command.sd_size,
-        initp.init_command.bl_size,
-        initp.init_command.app_size,
-        HashTypes(initp.init_command.hash.hash_type).name,
-        binascii.hexlify(initp.init_command.hash.hash),
-        initp.init_command.is_debug,
-        )
-
-        return s
-
-    def __str__(self):
-        
-        imgs = ""
-        i = 0
-        if self.manifest.softdevice_bootloader:
-            imgs = imgs + self.image_str(i, HexType.SD_BL, self.manifest.softdevice_bootloader)
-            i = i + 1
-
-        if self.manifest.softdevice:
-            imgs = imgs + self.image_str(i, HexType.SOFTDEVICE, self.manifest.softdevice)
-            i = i + 1
-
-        if self.manifest.bootloader:
-            imgs = imgs + self.image_str(i, HexType.BOOTLOADER, self.manifest.bootloader)
-            i = i + 1
-
-        if self.manifest.application:
-            imgs = imgs + self.image_str(i, HexType.APPLICATION, self.manifest.application)
-            i = i + 1
-
-        s = """
-DFU Package: <{0}>:
-|
-|- Image count: {1}
-""".format(self.zip_file, i)
-
-        s = s + imgs
-        return s
-
-    def generate_package(self, filename, preserve_work_dir=False):
+    def generate_package(self, filename, preserve_work_directory=False):
         """
         Generates a Nordic DFU package. The package is a zip file containing firmware(s) and metadata required
         for Nordic DFU applications to perform DFU onn nRF5X devices.
 
         :param str filename: Filename for generated package.
-        :param bool preserve_work_dir: True to preserve the temporary working directory.
+        :param bool preserve_work_directory: True to preserve the temporary working directory.
         Useful for debugging of a package, and if the user wants to look at the generated package without having to
         unzip it.
         :return: None
         """
-        self.zip_file = filename
-        self.work_dir = self.__create_temp_workspace()
+        work_directory = self.__create_temp_workspace()
 
         if Package._is_bootloader_softdevice_combination(self.firmwares_data):
             # Removing softdevice and bootloader data from dictionary and adding the combined later
@@ -311,7 +185,7 @@ DFU Package: <{0}>:
             bootloader_fw_name = bootloader_fw_data[FirmwareKeys.FIRMWARE_FILENAME]
 
             new_filename = "sd_bl.bin"
-            sd_bl_file_path = os.path.join(self.work_dir, new_filename)
+            sd_bl_file_path = os.path.join(work_directory, new_filename)
 
             nrf_hex = nRFHex(softdevice_fw_name, bootloader_fw_name)
             nrf_hex.tobinfile(sd_bl_file_path)
@@ -319,21 +193,20 @@ DFU Package: <{0}>:
             softdevice_size = nrf_hex.size()
             bootloader_size = nrf_hex.bootloadersize()
 
-            self.__add_firmware_info(firmware_type=HexType.SD_BL,
-                                     firmware_version=bootloader_fw_data[FirmwareKeys.INIT_PACKET_DATA][PacketField.FW_VERSION],  # use bootloader version in combination with SD
-                                     filename=sd_bl_file_path,
-                                     init_packet_data=softdevice_fw_data[FirmwareKeys.INIT_PACKET_DATA],
-                                     sd_size=softdevice_size,
-                                     bl_size=bootloader_size)
+            self.__add_firmware_info(HexType.SD_BL,
+                                     sd_bl_file_path,
+                                     softdevice_fw_data[FirmwareKeys.INIT_PACKET_DATA],
+                                     softdevice_size,
+                                     bootloader_size)
 
         for key, firmware_data in self.firmwares_data.iteritems():
 
             # Normalize the firmware file and store it in the work directory
             firmware_data[FirmwareKeys.BIN_FILENAME] = \
-                Package.normalize_firmware_to_bin(self.work_dir, firmware_data[FirmwareKeys.FIRMWARE_FILENAME])
+                Package.normalize_firmware_to_bin(work_directory, firmware_data[FirmwareKeys.FIRMWARE_FILENAME])
 
             # Calculate the hash for the .bin file located in the work directory
-            bin_file_path = os.path.join(self.work_dir, firmware_data[FirmwareKeys.BIN_FILENAME])
+            bin_file_path = os.path.join(work_directory, firmware_data[FirmwareKeys.BIN_FILENAME])
             firmware_hash = Package.calculate_sha256_hash(bin_file_path)
             bin_length = int(Package.calculate_file_size(bin_file_path))
 
@@ -351,16 +224,14 @@ DFU Package: <{0}>:
                 sd_size = firmware_data[FirmwareKeys.SD_SIZE]
 
             init_packet = InitPacketPB(
-                            from_bytes = None,
                             hash_bytes=firmware_hash,
-                            hash_type=HashTypes.SHA256,
                             dfu_type=HexTypeToInitPacketFwTypemap[key],
-                            is_debug=firmware_data[FirmwareKeys.INIT_PACKET_DATA][PacketField.DEBUG_MODE],
-                            fw_version=firmware_data[FirmwareKeys.INIT_PACKET_DATA][PacketField.FW_VERSION],
-                            hw_version=firmware_data[FirmwareKeys.INIT_PACKET_DATA][PacketField.HW_VERSION],
-                            sd_size=sd_size,
+                            hash_type=HashTypes.SHA256,
                             app_size=app_size,
+                            sd_size=sd_size,
                             bl_size=bl_size,
+                            fw_version=firmware_data[FirmwareKeys.INIT_PACKET_DATA][PacketField.APP_VERSION],
+                            hw_version=firmware_data[FirmwareKeys.INIT_PACKET_DATA][PacketField.DEVICE_REVISION],
                             sd_req=firmware_data[FirmwareKeys.INIT_PACKET_DATA][PacketField.REQUIRED_SOFTDEVICES_ARRAY])
 
             signer = Signing()
@@ -371,7 +242,7 @@ DFU Package: <{0}>:
             # Store the .dat file in the work directory
             init_packet_filename = firmware_data[FirmwareKeys.BIN_FILENAME].replace(".bin", ".dat")
 
-            with open(os.path.join(self.work_dir, init_packet_filename), 'wb') as init_packet_file:
+            with open(os.path.join(work_directory, init_packet_filename), 'wb') as init_packet_file:
                 init_packet_file.write(init_packet.get_init_packet_pb_bytes())
 
             firmware_data[FirmwareKeys.DAT_FILENAME] = \
@@ -380,26 +251,27 @@ DFU Package: <{0}>:
         # Store the manifest to manifest.json
         manifest = self.create_manifest()
 
-        with open(os.path.join(self.work_dir, Package.MANIFEST_FILENAME), "w") as manifest_file:
+        with open(os.path.join(work_directory, Package.MANIFEST_FILENAME), "w") as manifest_file:
             manifest_file.write(manifest)
 
-        # Package the work_dir to a zip file
-        Package.create_zip_package(self.work_dir, filename)
+        # Package the work_directory to a zip file
+        Package.create_zip_package(work_directory, filename)
 
         # Delete the temporary directory
-        self.rm_work_dir(preserve_work_dir)
+        if not preserve_work_directory:
+            shutil.rmtree(work_directory)
 
     @staticmethod
     def __create_temp_workspace():
-        return tempfile.mkdtemp(prefix="nrf_dfu_pkg_")
+        return tempfile.mkdtemp(prefix="nrf_dfu_")
 
     @staticmethod
-    def create_zip_package(work_dir, filename):
-        files = os.listdir(work_dir)
+    def create_zip_package(work_directory, filename):
+        files = os.listdir(work_directory)
 
         with ZipFile(filename, 'w') as package:
             for _file in files:
-                file_path = os.path.join(work_dir, _file)
+                file_path = os.path.join(work_directory, _file)
                 package.write(file_path, _file)
 
     @staticmethod
@@ -427,7 +299,7 @@ DFU Package: <{0}>:
         return sha256[31::-1]
 
     @staticmethod
-    def calculate_crc(crc, firmware_filename):
+    def calculate_crc16(firmware_filename):
         """
         Calculates CRC16 has on provided firmware filename
 
@@ -444,12 +316,8 @@ DFU Package: <{0}>:
                     data_buffer += data
                 else:
                     break
-        if crc == 16:
-            return calc_crc16(data_buffer, 0xffff)
-        elif crc == 32:
-            return binascii.crc32(data_buffer)
-        else:
-            raise NordicSemiException("Invalid CRC type")
+
+        return calc_crc16(data_buffer, 0xffff)
 
     def create_manifest(self):
         manifest = ManifestGenerator(self.firmwares_data)
@@ -459,7 +327,7 @@ DFU Package: <{0}>:
     def _is_bootloader_softdevice_combination(firmwares):
         return (HexType.BOOTLOADER in firmwares) and (HexType.SOFTDEVICE in firmwares)
 
-    def __add_firmware_info(self, firmware_type, firmware_version, filename, init_packet_data, sd_size=None, bl_size=None):
+    def __add_firmware_info(self, firmware_type, filename, init_packet_data, sd_size=None, bl_size=None):
         self.firmwares_data[firmware_type] = {
             FirmwareKeys.FIRMWARE_FILENAME: filename,
             FirmwareKeys.INIT_PACKET_DATA: init_packet_data.copy(),
@@ -469,15 +337,12 @@ DFU Package: <{0}>:
         if firmware_type == HexType.SD_BL:
             self.firmwares_data[firmware_type][FirmwareKeys.SD_SIZE] = sd_size
             self.firmwares_data[firmware_type][FirmwareKeys.BL_SIZE] = bl_size
-        
-        if firmware_version is not None:
-            self.firmwares_data[firmware_type][FirmwareKeys.INIT_PACKET_DATA][PacketField.FW_VERSION] = firmware_version
 
     @staticmethod
-    def normalize_firmware_to_bin(work_dir, firmware_path):
+    def normalize_firmware_to_bin(work_directory, firmware_path):
         firmware_filename = os.path.basename(firmware_path)
         new_filename = firmware_filename.replace(".hex", ".bin")
-        new_filepath = os.path.join(work_dir, new_filename)
+        new_filepath = os.path.join(work_directory, new_filename)
 
         if not os.path.exists(new_filepath):
             temp = nRFHex(firmware_path)

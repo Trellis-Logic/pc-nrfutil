@@ -1,9 +1,1 @@
 *.pyc
-
-# Virtualenv
-venv/
-
-# Build
-build/
-dist/
-nrfutil.egg-info/

@@ -26,19 +26,35 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-def calc_crc16(binary_data, crc=0xffff):
+class NordicSemiException(Exception):
     """
-    Calculates CRC16 on binary_data
-
-    :param int crc: CRC value to start calculation with
-    :param bytearray binary_data: Array with data to run CRC16 calculation on
-    :return int: Calculated CRC value of binary_data
+    Exception used as based exception for other exceptions defined in this package.
     """
+    pass
 
-    for b in binary_data:
-        crc = (crc >> 8 & 0x00FF) | (crc << 8 & 0xFF00)
-        crc ^= ord(b)
-        crc ^= (crc & 0x00FF) >> 4
-        crc ^= (crc << 8) << 4
-        crc ^= ((crc & 0x00FF) << 4) << 1
-    return crc & 0xFFFF
+
+class NotImplementedException(NordicSemiException):
+    """
+    Exception used when functionality has not been implemented yet.
+    """
+    pass
+
+
+class InvalidArgumentException(NordicSemiException):
+    """"
+    Exception used when a argument is of wrong type
+    """
+    pass
+
+class MissingArgumentException(NordicSemiException):
+    """"
+    Exception used when a argument is missing
+    """
+    pass
+
+
+class IllegalStateException(NordicSemiException):
+    """"
+    Exception used when program is in an illegal state
+    """
+    pass
