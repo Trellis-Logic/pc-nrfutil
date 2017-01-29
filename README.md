@@ -57,6 +57,9 @@ nrfutil --help
 ```
 
 ### Commands
+
+This section is an overview of general commands used with nrfutil.
+
 There are several commands that you can use to perform different tasks related to DFU:
 
 #### pkg
