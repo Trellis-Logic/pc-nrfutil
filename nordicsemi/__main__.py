@@ -33,7 +33,7 @@ import click
 
 from nordicsemi.dfu.dfu import Dfu
 from nordicsemi.dfu.dfu_transport import DfuEvent
-from nordicsemi.dfu.dfu_transport_ble import DfuTransportBle
+#from nordicsemi.dfu.dfu_transport_ble import DfuTransportBle
 from nordicsemi.dfu.dfu_transport_serial import DfuTransportSerial
 from nordicsemi.dfu.package import Package
 from nordicsemi import version as nrfutil_version
@@ -337,15 +337,15 @@ def serial(package, port, baudrate, flowcontrol):
               help='Device address.',
               type=click.STRING)
 def ble(package, port, name, address):
-    """Perform a Device Firmware Update on a device with a bootloader that supports BLE DFU."""
+    """Perform a Device Firmware Update on a device with a bootloader that supports BLE DFU (NOT SUPPORTED)."""
     if name is None and address is None:
         name = 'DfuTarg'
 
-    ble_backend = DfuTransportBle(serial_port=str(port),
-                                  target_device_name=str(name),
-                                  target_device_addr=str(address))
-    ble_backend.register_events_callback(DfuEvent.PROGRESS_EVENT, update_progress)
-    dfu = Dfu(zip_file_path = package, dfu_transport = ble_backend)
+#    ble_backend = DfuTransportBle(serial_port=str(port),
+#                                  target_device_name=str(name),
+#                                  target_device_addr=str(address))
+#    ble_backend.register_events_callback(DfuEvent.PROGRESS_EVENT, update_progress)
+#    dfu = Dfu(zip_file_path = package, dfu_transport = ble_backend)
     try:
         with click.progressbar(length=dfu.dfu_get_total_size()) as bar:
             global global_bar

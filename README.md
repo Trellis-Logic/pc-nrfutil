@@ -2,22 +2,25 @@ nrfutil
 ==========
 nrfutil is a Python package that includes the nrfutil command line utility and the nordicsemi library.
 
+This project is a branch of the nrfutil project based on the original version of the license, which allowed use on hardware other than Nordic Semiconductor.
+
+This utility is intended to be used with the Secure Device Update library (SDU), which uses the same download protocol used by Nordic tools to update other hardware devices.  The SDU project has no affiliation with Nordic Semiconductor.  The SDU project and corresponding instructions below which reference use of Nordic tools are not supported or endorced by Nordic Semiconductor.
+
+For more information about the Secure Device Update Project, see [the project page](https://trellis-logic.github.io/sdu/).  For information about use of the SDU library with the RedBear Duo platform, see [the RedBear Duo platform page](https://trellis-logic.github.io/sdu/platforms/redbear_duo/platform.html)
+
+
 About
 -----
 The library is written for Python 2.7.
 
 Versions
 --------
-There are 2 different and incompatible DFU package formats:
+The original nordic nrfutil project supports 2 different and incompatible DFU package formats
 
 * legacy: used a simple structure and no security
 * modern: uses Google's protocol buffers for serialization and can be cryptographically signed
 
-The DFU package format transitioned from legacy to modern in SDK 11.1. Depending on the SDK version
-that you are using you will need to select a release of this tool compatible with it:
-
-* Version 0.5.0 generates legacy firmware packages compatible with **nRF SDK 11.0 and older**
-* Version 1.0.0 and later generate modern firmware packages compatible with **nRF SDK 11.1 and newer**
+The [SDU project](https://trellis-logic.github.io/sdu) supports only the modern implementation with google protocol buffers for serialization and cryptographic signing
 
 Prerequisites
 -------------
@@ -54,6 +57,9 @@ nrfutil --help
 ```
 
 ### Commands
+
+This section is an overview of general commands used with nrfutil.
+
 There are several commands that you can use to perform different tasks related to DFU:
 
 #### pkg
